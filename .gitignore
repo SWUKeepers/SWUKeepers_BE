@@ -1,0 +1,58 @@
+# Python 환경에 의해 생성된 파일들
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 환경 설정 파일 및 가상 환경
+.env
+*.env
+.venv/
+env/
+venv/
+
+# 비밀 키, DB 비밀번호 등이 포함된 파일들
+secrets.json
+
+# IDE 및 편집기 관련 파일들
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 운영 체제별 파일들
+.DS_Store
+Thumbs.db
+
+# Django 마이그레이션 파일들 (처음부터 버전 관리를 할 때 제외 가능)
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# SQLite3 데이터베이스 파일
+db.sqlite3
+
+# Static 및 Media 파일들
+/static/
+media/
+
+# Python 패키지들
+*.egg
+*.egg-info/
+dist/
+build/
+
+# 로그 파일
+*.log
+
+# Celery 비동기 작업 대기열 파일
+celerybeat-schedule
+
+# 타사 패키지 관련 파일
+*.mo
+*.pot
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Django 파일 업로드
+media/

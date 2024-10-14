@@ -24,6 +24,7 @@ class Message(models.Model):
     sender = models.CharField(max_length=100)  # 발신자 이름
     time_sent = models.DateTimeField()  # 메시지가 전송된 시간
     content = models.TextField()  # 메시지 내용
+    sentiment = models.CharField(max_length=10, null=True, blank=True)  # 긍부정 판단 결과 추가
 
     def __str__(self):
         return f"{self.sender}: {self.content[:20]}"  # 발신자와 메시지의 일부를 출력

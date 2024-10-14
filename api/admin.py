@@ -39,6 +39,7 @@ class MessageAdmin(admin.ModelAdmin):
         "sender",
         "time_sent",
         "content",
+        "sentiment",
     )  # 목록에서 표시할 필드
-    list_filter = ("chat_room", "sender")  # 필터 추가 (방 이름, 발신자 기준)
-    search_fields = ["sender", "content"]  # 검색 기능 추가 (발신자, 메시지 내용 기준)
+    list_filter = ("chat_room", "sender","sentiment")  # 필터 추가 (방 이름, 발신자 기준)
+    search_fields = ["sender", "content","sentiment"]  # 검색 기능 추가 (발신자, 메시지 내용 기준)

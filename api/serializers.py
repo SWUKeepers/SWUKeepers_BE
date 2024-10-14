@@ -29,16 +29,17 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         chat_room = ChatRoom.objects.create(room_name=room_name)
 
         # 파일 파싱 및 메시지 저장 처리
-        self.parse_file(file, chat_room)
+        sentences = self.parse_file(file, chat_room)
 
-        return chat_room
-
+        return chat_room,sentences
+    
     def extract_room_name(self, file):
         file.seek(0)  # 파일 포인터를 처음으로 이동
         first_line = file.readline().decode("utf-8").strip()
         return first_line
 
     def parse_file(self, file, chat_room):
+        sentences = []
         for line in file:
             try:
                 line = line.decode("utf-8").strip()
@@ -65,5 +66,11 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                         time_sent=datetime.combine(datetime.today(), time_sent),
                         content=content,
                     )
+
+
+                    # 각 메시지를 sentences 리스트에 추가
+                    sentences.append(content)
+
             except Exception as e:
                 print(f"Error parsing line '{line}': {e}")
+        return sentences

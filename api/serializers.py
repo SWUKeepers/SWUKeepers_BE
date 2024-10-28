@@ -18,12 +18,6 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         if not file:
             raise serializers.ValidationError("File is missing or could not be found.")
 
-        # 카카오톡 내보내기 형식 검사
-        if not self.is_valid_kakao_format(file):
-            raise serializers.ValidationError(
-                {"detail": "Only KakaoTalk export files are allowed."}
-            )
-
         # 파일 해시 계산
         file_hash = self.calculate_file_hash(file)
 
@@ -48,26 +42,6 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         self.parse_file(file, chat_room)
 
         return chat_room
-
-    def is_valid_kakao_format(self, file):
-        """파일에 '저장한 날짜'와 '[이름] [시간]' 형식이 포함되어 있는지 확인합니다."""
-        file.seek(0)  # 파일 포인터를 처음으로 이동
-        lines = [line.decode("utf-8").strip() for line in file]
-
-        # '저장한 날짜'가 포함된 줄이 있는지 확인
-        has_saved_date = any("저장한 날짜" in line for line in lines)
-
-        # '[이름] [시간]' 형식을 포함한 줄이 있는지 확인
-        has_name_time_format = any(
-            "[" in line and "]" in line and line.count("[") >= 2 for line in lines
-        )
-
-        # 디버그 로그 출력 (선택 사항)
-        print(f"저장한 날짜 포함 여부: {has_saved_date}")
-        print(f"[이름] [시간] 형식 포함 여부: {has_name_time_format}")
-
-        # 두 조건을 모두 만족해야 통과
-        return has_saved_date and has_name_time_format
 
     def calculate_file_hash(self, file):
         """파일의 해시 값을 계산합니다."""

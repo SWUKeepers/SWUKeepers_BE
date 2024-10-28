@@ -9,6 +9,8 @@ __pycache__/
 .venv/
 env/
 venv/
+./venv
+swukeepers
 
 # 비밀 키, DB 비밀번호 등이 포함된 파일들
 secrets.json

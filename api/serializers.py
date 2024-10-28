@@ -1,8 +1,9 @@
-from rest_framework import serializers
 import os
-from django.conf import settings
-from .models import ChatRoom, Message
+import hashlib
 from datetime import datetime
+from django.conf import settings
+from rest_framework import serializers
+from .models import ChatRoom, Message, TextFile
 import re
 
 
@@ -26,28 +27,46 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 "카카오톡으로 내보내기 한 파일이 맞는지 확인해주세요!"
             )  # 커스텀 메시지 반환
 
+        # 파일 해시 계산
+        file_hash = self.calculate_file_hash(file)
+
+        # 해시 중복 체크
+        if TextFile.objects.filter(file_hash=file_hash).exists():
+            raise serializers.ValidationError(
+                {"detail": "This file has already been uploaded."}
+            )
+
+        # 파일 저장
+        text_file = TextFile.objects.create(file=file, file_hash=file_hash)
+
         # 파일에서 room_name 추출
         room_name = self.extract_room_name(file)
         if not room_name:
             raise serializers.ValidationError(
-                "Room name could not be extracted from the file."
+                {"detail": "Room name could not be extracted from the file."}
             )
 
-        # ChatRoom 저장
+        # ChatRoom 저장 및 파일 파싱
         chat_room = ChatRoom.objects.create(room_name=room_name)
-
-        # 파일을 로컬에 저장
-        self.save_file_locally(file)
 
         # 파일 파싱 및 메시지 저장 처리
         self.parse_file(file, chat_room)
 
         return chat_room
 
+    def calculate_file_hash(self, file):
+        """파일의 해시 값을 계산합니다."""
+        hasher = hashlib.sha256()
+        file.seek(0)  # 파일 포인터를 처음으로 이동
+        for chunk in file.chunks():
+            hasher.update(chunk)
+        file.seek(0)  # 파일 포인터를 다시 처음으로 이동
+        return hasher.hexdigest()
+
     def extract_room_name(self, file):
-        file.seek(0)
+        file.seek(0)  # 파일 포인터를 처음으로 이동
         first_line = file.readline().decode("utf-8").strip()
-        return first_line
+        return first_line.split(":")[-1].strip()
 
     def save_file_locally(self, file):
         file_name = file.name
@@ -59,16 +78,15 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 destination.write(chunk)
 
     def parse_file(self, file, chat_room):
-        file.seek(0)
         for line in file:
             try:
                 line = line.decode("utf-8").strip()
                 if line.startswith("["):
                     sender_end_idx = line.index("]") + 1
                     time_end_idx = line.index("]", sender_end_idx) + 1
-                    sender = line[1 : sender_end_idx - 1]
-                    time_sent = line[sender_end_idx + 2 : time_end_idx - 1]
-                    content = line[time_end_idx + 2 :]
+                    sender = line[1:sender_end_idx - 1]
+                    time_sent = line[sender_end_idx + 2:time_end_idx - 1]
+                    content = line[time_end_idx + 2:]
 
                     if "오전" in time_sent:
                         time_sent = time_sent.replace("오전", "AM")

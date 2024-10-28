@@ -12,7 +12,7 @@ import torch
 from torch.optim import AdamW
 
 # 상위 디렉토리의 codes 폴더를 Python 경로에 추가
-sys.path.append('/home/doa/codes')
+sys.path.append('home/doa/pbl/codes')
 # AI 모델을 가져오기
 import FinalTestModel
 

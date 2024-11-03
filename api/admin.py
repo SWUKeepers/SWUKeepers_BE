@@ -46,8 +46,13 @@ class MessageAdmin(admin.ModelAdmin):
         "sender",
         "time_sent",
         "content",
+        "is_curse",  # 욕설 여부 필드 추가
     )  # 목록에서 표시할 필드
-    list_filter = ("chat_room", "sender")  # 필터 추가 (방 이름, 발신자 기준)
-    search_fields = ["sender", "content"]  # 검색 기능 추가 (발신자, 메시지 내용 기준)
+    list_filter = ("chat_room", "sender", "is_curse")  # 필터 추가 (방 이름, 발신자, 욕설 여부 기준)
+    search_fields = ["sender", "content", "is_curse"]  # 검색 기능 추가 (발신자, 메시지 내용, 욕설 여부 기준)
 
+    def is_curse(self, obj):
+        """욕설 여부를 표시합니다."""
+        return "Yes" if obj.is_curse else "No"
 
+    is_curse.short_description = "욕설 여부"  # 관리자 페이지에 욕설 여부 필드 표시

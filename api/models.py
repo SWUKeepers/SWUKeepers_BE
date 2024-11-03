@@ -1,5 +1,7 @@
 import hashlib
 from django.db import models
+from django.utils import timezone
+from api.utils.bert_load import predict
 
 class TextFile(models.Model):
     file = models.FileField(upload_to="uploads/")
@@ -48,12 +50,24 @@ class ChatRoom(models.Model):
 
 class Message(models.Model):
     chat_room = models.ForeignKey(
-        ChatRoom, related_name="messages", on_delete=models.CASCADE
+        'ChatRoom', related_name="messages", on_delete=models.CASCADE
     )  # 대화방과 연결
     sender = models.CharField(max_length=100)  # 발신자 이름
     time_sent = models.DateTimeField()  # 메시지 전송 시간
     content = models.TextField()  # 메시지 내용
+    is_curse = models.BooleanField(default=False)  # 욕설 여부 필드 추가
+
+    def save(self, *args, **kwargs):
+        # time_sent이 naive라면, timezone-aware로 변환
+        if self.time_sent and timezone.is_naive(self.time_sent):
+            self.time_sent = timezone.make_aware(self.time_sent, timezone.get_default_timezone())
+        
+        # 메시지의 욕설 여부를 예측하여 is_curse에 저장
+        self.is_curse = predict(self.content)
+        
+        super().save(*args, **kwargs)  # 부모 클래스의 save 호출
 
     def __str__(self):
-        return f"{self.sender}: {self.content[:20]}"  # 메시지 일부를 출력
+        return f"{self.sender}: {self.content[:20]}"
+
 

@@ -58,3 +58,5 @@ yarn-debug.log
 
 # Django 파일 업로드
 media/
+
+models/

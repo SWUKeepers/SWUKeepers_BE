@@ -114,9 +114,12 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         # 날짜 줄이 '---'로 감싸져 있는 경우를 포함한 정규식
         date_time_pattern = re.compile(r"[-]+\s\d{4}년 \d{1,2}월 \d{1,2}일 .+\s[-]+")
 
-        # 대화 형식 예시 (ex: [김경식] [오전 12:10] 내용)
-        chat_line_pattern = re.compile(r"\[.+?\] \[오전|오후 \d{1,2}:\d{2}\] .+")
+        # 특수문자와 이모티콘을 포함할 수 있는 대화방 이름 정규식  ++++ 11/10 추가
+        chat_room_name_pattern = re.compile(r".*님과 카카오톡 대화")
 
+        # 대화 형식 예시 (ex: [김경식] [오전 12:10] 내용)
+        chat_line_pattern = re.compile(r"\[.+?\] \[(오전|오후) \d{1,2}:\d{2}\] .+")
+  
         first_line_checked = False
         date_line_checked = False
 
@@ -150,8 +153,14 @@ class ChatRoomSerializer(serializers.ModelSerializer):
 
             # 대화 형식 확인 (메시지 라인)
             if chat_line_pattern.match(line):
-                print(f"Chat line matched: {line}")  # 대화 라인 매치 로그
-                continue
+               print(f"Chat line matched: {line}")  # 대화 라인 매치 로그
+               continue
+
+            # 일반 대화 내용도 유효하게 처리  ++ 11/10 추가
+            print(f"General chat line (non-error): {line}")
+            continue  # 일반 대화 내용은 오류로 처리하지 않고 계속 진행
+
+
 
             # 모든 조건에 맞지 않으면 형식이 올바르지 않음
             print(f"Invalid format detected: {line}")

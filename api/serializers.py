@@ -5,7 +5,6 @@ from django.conf import settings
 from rest_framework import serializers
 from .models import ChatRoom, Message, TextFile
 import re
-from .Kakao_parse import KakaoChatParser
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
@@ -104,7 +103,6 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                     )
             except Exception as e:
                 print(f"Error parsing line '{line}': {e}")
-    
 
     def validate_kakao_chat_format(self, file):
         """

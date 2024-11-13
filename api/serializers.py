@@ -78,31 +78,53 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 destination.write(chunk)
 
     def parse_file(self, file, chat_room):
+        file.seek(0)  # 파일 포인터를 처음으로 이동
+
         for line in file:
             try:
-                line = line.decode("utf-8").strip()
+            # utf-8로 디코딩하고 개행만 제거
+                line = line.decode("utf-8").rstrip("\n")
+            
+            # 디버깅: 원본 줄 확인
+                print(f"Original line: '{line}'")
+
+            # 메시지 형식 확인 및 파싱
                 if line.startswith("["):
                     sender_end_idx = line.index("]") + 1
                     time_end_idx = line.index("]", sender_end_idx) + 1
                     sender = line[1:sender_end_idx - 1]
                     time_sent = line[sender_end_idx + 2:time_end_idx - 1]
-                    content = line[time_end_idx + 2:]
+                
+                # 메시지 내용 앞에 "." 추가
+                    content_start_idx = time_end_idx + 2
+                    content = "." + line[content_start_idx:]  # 메시지 내용 앞에 "." 추가
 
+                # 디버깅: 각 파싱 단계 확인
+                    print(f"Sender parsed: '{sender}'")
+                    print(f"Time parsed: '{time_sent}'")
+                    print(f"Content with dot added: '{content}'")
+
+                # 오전/오후 표기를 AM/PM으로 변환
                     if "오전" in time_sent:
                         time_sent = time_sent.replace("오전", "AM")
                     elif "오후" in time_sent:
                         time_sent = time_sent.replace("오후", "PM")
 
+                # 시간 문자열을 datetime 객체로 변환
                     time_sent = datetime.strptime(time_sent, "%p %I:%M").time()
 
+                # Message 객체 생성 및 저장
                     Message.objects.create(
                         chat_room=chat_room,
                         sender=sender,
                         time_sent=datetime.combine(datetime.today(), time_sent),
                         content=content,
                     )
+
             except Exception as e:
                 print(f"Error parsing line '{line}': {e}")
+
+
 
     def validate_kakao_chat_format(self, file):
         """

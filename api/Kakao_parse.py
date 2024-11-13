@@ -12,7 +12,7 @@ def parse_kakao_file(file, room_name):
     file.seek(0)
 
     for line in file:
-        line = "." + line.decode("utf-8").rstrip("\n") # 파일을 디코딩
+        line = line.decode("utf-8").rstrip("\n") # 파일을 디코딩
 
         match = re.match(pattern, line)
         if match:

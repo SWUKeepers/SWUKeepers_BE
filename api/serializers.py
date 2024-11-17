@@ -188,3 +188,4 @@ class ChatRoomSerializer(serializers.ModelSerializer):
 
         # 모든 줄이 유효하다면 True 반환
         return True
+ 

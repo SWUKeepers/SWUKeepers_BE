@@ -31,6 +31,7 @@ class ChatRoom(models.Model):
     room_name = models.CharField(max_length=255)  # 대화방 이름
     saved_at = models.DateTimeField(auto_now_add=True)  # 대화 저장 날짜
     room_hash = models.CharField(max_length=64, unique=True, blank=True, null=True, editable=False)  # 필드 수정
+    cyberbullying_detected = models.BooleanField(default=False)  # 사이버불링 여부 필드
 
     def __str__(self):
         return self.room_name
@@ -47,6 +48,9 @@ class ChatRoom(models.Model):
         hasher.update(self.room_name.encode("utf-8"))
         return hasher.hexdigest()
 
+    def is_cyberbullying(self):
+        return "bully" in self.room_name.lower()  # 예제: 특정 조건에 따라 True/False 반환
+    is_cyberbullying.boolean = True  # Admin에서 불리언 아이콘으로 표시
 
 class Message(models.Model):
     chat_room = models.ForeignKey(
@@ -55,7 +59,8 @@ class Message(models.Model):
     sender = models.CharField(max_length=100)  # 발신자 이름
     time_sent = models.DateTimeField()  # 메시지 전송 시간
     content = models.TextField()  # 메시지 내용
-    is_curse = models.BooleanField(default=False)  # 욕설 여부 필드 추가
+    is_curse = models.BooleanField(default=False)  # 욕설 여부 필드 
+   
 
     def save(self, *args, **kwargs):
         # time_sent이 naive라면, timezone-aware로 변환
@@ -67,6 +72,8 @@ class Message(models.Model):
         
         super().save(*args, **kwargs)  # 부모 클래스의 save 호출
 
+
+   
     def __str__(self):
         return f"{self.sender}: {self.content[:20]}"
 

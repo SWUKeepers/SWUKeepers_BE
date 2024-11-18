@@ -7,7 +7,7 @@ import json
 
 # 모델 및 토크나이저 로드 함수
 def load_model_and_tokenizer():
-    model_path = os.path.join(settings.BASE_DIR, 'models/model_weight.bin')
+    model_path = os.path.join('/home/doa/PPBL/swukeepers_be/models/model_weight.bin')
     model = BertForSequenceClassification.from_pretrained('bert-base-multilingual-cased', num_labels=2)
     tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
     
@@ -25,7 +25,7 @@ def load_model_and_tokenizer():
 
 # 욕설 단어 로드 함수
 def load_abuse_words():
-    curse_file_path = os.path.join(settings.BASE_DIR, '/home/minji/SWUKeepers_BE/curse.json')  # 욕설 단어 JSON 파일 경로
+    curse_file_path = os.path.join(settings.BASE_DIR, '/home/doa/PPBL/swukeepers_be/models/curse.json')  # 욕설 단어 JSON 파일 경로
     try:
         with open(curse_file_path, 'r', encoding='utf-8') as f:
             curse_words = json.load(f)

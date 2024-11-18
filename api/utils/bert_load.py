@@ -7,7 +7,7 @@ import re
 
 # 모델 및 토크나이저 로드 함수
 def load_model_and_tokenizer():
-    model_path = os.path.join(settings.BASE_DIR, 'models/model_weight.bin')
+    model_path = os.path.join(settings.BASE_DIR, '/home/doa/PPBL/swukeepers_be/models/model_weight.bin')
     model = BertForSequenceClassification.from_pretrained('bert-base-multilingual-cased', num_labels=2)
     tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
     

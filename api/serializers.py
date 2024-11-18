@@ -77,32 +77,52 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             for chunk in file.chunks():
                 destination.write(chunk)
 
+
     def parse_file(self, file, chat_room):
+        file.seek(0)  # 파일 포인터를 처음으로 이동
+    
+    # 정규 표현식 패턴 정의: [발신자] [오전/오후 시간] 메시지 내용
+        pattern = r"^\[(.*?)\] \[(오전|오후) (\d{1,2}:\d{2})\] (.*)"
+    
         for line in file:
             try:
-                line = line.decode("utf-8").strip()
-                if line.startswith("["):
-                    sender_end_idx = line.index("]") + 1
-                    time_end_idx = line.index("]", sender_end_idx) + 1
-                    sender = line[1:sender_end_idx - 1]
-                    time_sent = line[sender_end_idx + 2:time_end_idx - 1]
-                    content = line[time_end_idx + 2:]
+            # utf-8로 디코딩하고 개행만 제거
+                line = line.decode("utf-8").rstrip("\n")
+            
+            # 디버깅: 원본 줄 확인
+                print(f"Original line: '{line}'")
+            
+            # 정규 표현식으로 매칭
+                match = re.match(pattern, line)
+                if match:
+                    sender, am_pm, time, content = match.groups()
+                
+                # 오전/오후를 AM/PM으로 변환
+                    if am_pm == "오전":
+                        time_sent = f"AM {time}"
+                    elif am_pm == "오후":
+                        time_sent = f"PM {time}"
 
-                    if "오전" in time_sent:
-                        time_sent = time_sent.replace("오전", "AM")
-                    elif "오후" in time_sent:
-                        time_sent = time_sent.replace("오후", "PM")
-
+                # 시간 문자열을 datetime 객체로 변환
                     time_sent = datetime.strptime(time_sent, "%p %I:%M").time()
+                
+                # 디버깅: 각 파싱 단계 확인
+                    print(f"Sender parsed: '{sender}'")
+                    print(f"Time parsed: '{time_sent}'")
+                    print(f"Content parsed: '{content}'")
 
+                # Message 객체 생성 및 저장
                     Message.objects.create(
                         chat_room=chat_room,
                         sender=sender,
                         time_sent=datetime.combine(datetime.today(), time_sent),
                         content=content,
                     )
+
             except Exception as e:
                 print(f"Error parsing line '{line}': {e}")
+
+
 
     def validate_kakao_chat_format(self, file):
         """

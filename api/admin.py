@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.utils.html import format_html
+from django.urls import reverse
 from .models import TextFile, ChatRoom, Message
 
 @admin.register(TextFile)
@@ -26,7 +28,7 @@ class MessageInline(admin.TabularInline):
 
 @admin.register(ChatRoom)
 class ChatRoomAdmin(admin.ModelAdmin):
-    list_display = ("room_name", "saved_at", "room_hash", "cyberbullying_status")
+    list_display = ("room_name", "saved_at", "room_hash", "cyberbullying_status", "download_pdf_button")
     inlines = [MessageInline]
     search_fields = ["room_name", "room_hash"]
 
@@ -34,6 +36,16 @@ class ChatRoomAdmin(admin.ModelAdmin):
         return "Yes" if obj.is_cyberbullying else "No"
 
     cyberbullying_status.short_description = "사이버불링 여부"
+
+    def download_pdf_button(self, obj):
+        """
+        사이버불링 여부가 Yes인 경우 PDF 다운로드 버튼을 표시.
+        """
+        if obj.is_cyberbullying:
+            url = reverse('download-cyberbullying-pdf', args=[obj.pk])
+            return format_html('<a href="{}" class="button">Download PDF</a>', url)
+        return "-"
+    download_pdf_button.short_description = "Download Report"
 
 
 @admin.register(Message)

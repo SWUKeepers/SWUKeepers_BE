@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.utils.html import format_html
+from django.urls import reverse
 from .models import TextFile, ChatRoom, Message
 from django.urls import reverse
 from django.utils.html import format_html
@@ -31,15 +33,31 @@ class MessageInline(admin.TabularInline):
 
 @admin.register(ChatRoom)
 class ChatRoomAdmin(admin.ModelAdmin):
+<<<<<<< HEAD
     list_display = ("room_name", "saved_at", "room_hash", "is_cyberbullying")  # 해시 필드 추가
     inlines = [MessageInline]  # 메시지를 인라인 형태로 표시
     search_fields = ["room_name", "room_hash","is_cyberbullying"]  # 검색 기능 추가 (방 이름 및 해시)
+=======
+    list_display = ("room_name", "saved_at", "room_hash", "cyberbullying_status", "download_pdf_button")
+    inlines = [MessageInline]
+    search_fields = ["room_name", "room_hash"]
+>>>>>>> develop
 
     def room_hash(self, obj):
         """채팅방에 저장된 해시 값을 반환합니다."""
         return obj.room_hash if obj.room_hash else "No Hash"
 
     room_hash.short_description = "Room Hash"  # 관리자 페이지에 해시 필드 표시
+
+    def download_pdf_button(self, obj):
+        """
+        사이버불링 여부가 Yes인 경우 PDF 다운로드 버튼을 표시.
+        """
+        if obj.is_cyberbullying:
+            url = reverse('download-cyberbullying-pdf', args=[obj.pk])
+            return format_html('<a href="{}" class="button">Download PDF</a>', url)
+        return "-"
+    download_pdf_button.short_description = "Download Report"
 
 
 @admin.register(Message)

@@ -14,8 +14,7 @@ from api.utils.bert_load import (
 )  # 사이버불링 함수 import
 from django.contrib.staticfiles import finders
 
-# 한글 폰트 등록
-font_path = finders.find("fonts/custom_font.ttf")
+font_path = finders.find("fonts/NanumGothic.ttf")
 
 pdfmetrics.registerFont(TTFont("/NanumGothic.ttf", font_path))
 

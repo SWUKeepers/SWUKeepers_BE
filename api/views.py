@@ -19,10 +19,10 @@ font_path = finders.find("fonts/NanumGothic.ttf")
 pdfmetrics.registerFont(TTFont("/NanumGothic.ttf", font_path))
 
 if font_path:
-    pdfmetrics.registerFont(TTFont("CustomFont", font_path))
+    pdfmetrics.registerFont(TTFont("NanumGothic", font_path))
     print(f"Font 'CustomFont' registered successfully from {font_path}")
 else:
-    print("Font file not found: fonts/custom_font.ttf")
+    print("Font file not found: fonts/NanumGothic.ttf")
 
 
 def draw_wrapped_text(

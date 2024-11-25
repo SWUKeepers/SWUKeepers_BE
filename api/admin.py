@@ -33,15 +33,9 @@ class MessageInline(admin.TabularInline):
 
 @admin.register(ChatRoom)
 class ChatRoomAdmin(admin.ModelAdmin):
-<<<<<<< HEAD
     list_display = ("room_name", "saved_at", "room_hash", "is_cyberbullying")  # 해시 필드 추가
     inlines = [MessageInline]  # 메시지를 인라인 형태로 표시
     search_fields = ["room_name", "room_hash","is_cyberbullying"]  # 검색 기능 추가 (방 이름 및 해시)
-=======
-    list_display = ("room_name", "saved_at", "room_hash", "cyberbullying_status", "download_pdf_button")
-    inlines = [MessageInline]
-    search_fields = ["room_name", "room_hash"]
->>>>>>> develop
 
     def room_hash(self, obj):
         """채팅방에 저장된 해시 값을 반환합니다."""

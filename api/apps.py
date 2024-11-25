@@ -1,6 +1,6 @@
 # api/apps.py
 from django.apps import AppConfig
-from .utils.bert_load import load_model_and_tokenizer
+
 
 class MyAppConfig(AppConfig):
     name = 'api'

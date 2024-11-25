@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import ChatRoomSerializer
+from api.utils.bert_load import predict_with_cyberbullying_check  # 사이버불링 함수 import
 
 # 한글 폰트 등록
 font_path = "/home/minji/SWUKeepers_BE/static/fonts/NanumGothic-Regular.ttf"
@@ -31,55 +32,54 @@ def download_cyberbullying_pdf(request, pk):
     PDF 생성 및 다운로드를 처리하는 뷰.
     사이버불링 여부가 Yes인 채팅방의 정보를 PDF로 생성하여 제공.
     """
-    # ChatRoom 객체 가져오기
     try:
         chat_room = ChatRoom.objects.get(pk=pk, is_cyberbullying=True)
     except ChatRoom.DoesNotExist:
         return HttpResponse("Chat room not found or not marked as cyberbullying.", status=404)
 
-    # PDF 응답 생성
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = f"attachment; filename={chat_room.room_name}_cyberbullying_report.pdf"
 
-    # PDF 생성
     pdf = canvas.Canvas(response, pagesize=A4)
-    pdf.setFont("NanumGothic", 12)  # 등록된 한글 폰트를 사용
+    pdf.setFont("NanumGothic", 12)
 
-    # PDF 제목
     pdf.drawString(100, 800, "Cyberbullying Report")
     pdf.drawString(100, 780, f"Room Name: {chat_room.room_name}")
     pdf.drawString(100, 760, f"Saved At: {chat_room.saved_at.strftime('%Y-%m-%d %H:%M:%S')}")
     y = draw_wrapped_text(pdf, 100, 740, f"Room Hash: {chat_room.room_hash}", max_width=400)
 
-    # 메시지 내용 추가
     pdf.drawString(100, y - 20, "Messages:")
     y -= 40
     for message in chat_room.messages.all():
         message_text = f"- {message.sender}: {message.content[:50]}{'...' if len(message.content) > 50 else ''}"
         y = draw_wrapped_text(pdf, 100, y, message_text, max_width=400)
-        if y < 50:  # 페이지 하단에 도달하면 새 페이지로 이동
+        if y < 50:
             pdf.showPage()
-            pdf.setFont("NanumGothic", 12)  # 새 페이지에서도 폰트 설정 필요
+            pdf.setFont("NanumGothic", 12)
             y = 800
 
-    # PDF 저장
     pdf.save()
 
     return response
 
 
-# 파일 업로드 API
 class FileUploadView(APIView):
-    """
-    파일 업로드를 처리하는 API View.
-    """
     def post(self, request, *args, **kwargs):
-        # ChatRoomSerializer를 이용해 파일 데이터 처리
+        if "file" not in request.FILES:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        file = request.FILES["file"]
         serializer = ChatRoomSerializer(data=request.data, context={"request": request})
+
         if serializer.is_valid():
-            chat_room = serializer.save()
-            return Response(
-                {"message": "File uploaded successfully!", "data": serializer.data},
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                chat_room = serializer.save()
+                chat_room.analyze_cyberbullying()  # 사이버불링 분석 및 저장
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                print(f"Error while processing file: {e}")
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print("Validation errors: ", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

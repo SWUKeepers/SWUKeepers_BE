@@ -125,18 +125,21 @@ class DownloadCyberbullyingPDF(APIView):
                     pdf.setFont("NanumGothic", 12)
                     y = 800
 
-            pdf.save()
-            buffer.seek(0)  # 스트림 시작으로 이동
+            pdf.save()  # PDF 저장
+            buffer.seek(0)  # 스트림 시작 지점으로 이동
 
             # PDF 파일 이름 설정
             filename = f"{chat_room.room_name}_cyberbullying_report.pdf"
+            encoded_filename = escape_uri_path(filename)
 
             # PDF 반환
-            response = HttpResponse(buffer, content_type="application/pdf")
-            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+            response["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
             response["Cache-Control"] = "no-store, no-cache, must-revalidate"
             response["Pragma"] = "no-cache"
             response["Expires"] = "0"
+
+            buffer.close()  # 스트림 닫기
             return response
 
         except Exception as e:
@@ -145,3 +148,4 @@ class DownloadCyberbullyingPDF(APIView):
                 {"error": "Failed to generate PDF. Please try again later."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+

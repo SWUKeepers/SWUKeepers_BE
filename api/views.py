@@ -46,62 +46,58 @@ class FileUploadView(APIView):
         if "file" not in request.FILES:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        file = request.FILES["file"]
         serializer = ChatRoomSerializer(data=request.data, context={"request": request})
 
         if serializer.is_valid():
-            try:
+                
                 chat_room = serializer.save()
                 chat_room.analyze_cyberbullying()  # 사이버불링 분석 및 저장
 
-                # PDF 생성
-                buffer = io.BytesIO()
-                pdf = canvas.Canvas(buffer, pagesize=A4)
+                # 사이버불링 여부 확인
+                if not chat_room.is_cyberbullying:
+                    logger.info(f"ChatRoom ID: {chat_room.pk} - 사이버불링 없음, PDF 생성하지 않음")
+                    return Response(
+                        {"message": "No cyberbullying detected."},
+                        status=status.HTTP_200_OK,
+                    )
 
-                # NanumGothic 폰트 설정
-                try:
-                    pdf.setFont("NanumGothic", 12)
-                except Exception as e:
-                    logger.error(f"PDF 글꼴 설정 실패: {str(e)}")
-                    raise e
+                else:
+    # 사이버불링일 경우에만 PDF 생성
+                    try:
+                        buffer = io.BytesIO()
+                        pdf = canvas.Canvas(buffer, pagesize=A4)
 
-                pdf.drawString(100, 800, "Cyberbullying Report")
-                pdf.drawString(100, 780, f"Room Name: {chat_room.room_name}")
-                pdf.drawString(100, 760, f"Saved At: {chat_room.saved_at.strftime('%Y-%m-%d %H:%M:%S')}")
-                y = draw_wrapped_text(pdf, 100, 740, f"Room Hash: {chat_room.room_hash}", max_width=400)
+                        pdf.drawString(100, 800, "Cyberbullying Report")
+                        pdf.drawString(100, 780, f"Room Name: {chat_room.room_name}")
+                        pdf.drawString(100, 760, f"Saved At: {chat_room.saved_at.strftime('%Y-%m-%d %H:%M:%S')}")
+                        y = draw_wrapped_text(pdf, 100, 740, f"Room Hash: {chat_room.room_hash}", max_width=400)
 
-                pdf.drawString(100, y - 20, "Messages:")
-                y -= 40
-                for message in chat_room.messages.all():
-                    message_text = f"- {message.sender}: {message.content[:50]}{'...' if len(message.content) > 50 else ''}"
-                    y = draw_wrapped_text(pdf, 100, y, message_text, max_width=400)
-                    if y < 50:
-                        pdf.showPage()
-                        pdf.setFont("NanumGothic", 12)
-                        y = 800
+                        pdf.drawString(100, y - 20, "Messages:")
+                        y -= 40
+                        for message in chat_room.messages.all():
+                            message_text = f"- {message.sender}: {message.content[:50]}{'...' if len(message.content) > 50 else ''}"
+                            y = draw_wrapped_text(pdf, 100, y, message_text, max_width=400)
+                            if y < 50:
+                                pdf.showPage()
+                                pdf.setFont("NanumGothic", 12)
+                                y = 800
 
-                pdf.save()
-                buffer.seek(0)
+                        pdf.save()
+                        buffer.seek(0)
 
-                logger.info(f"PDF 생성 및 전송 성공 - ChatRoom ID: {chat_room.pk}, Hash: {chat_room.room_hash}")
+                        logger.info(f"PDF 생성 성공 - ChatRoom ID: {chat_room.pk}, Hash: {chat_room.room_hash}")
 
-                # 파일 이름을 UTF-8로 인코딩하여 Content-Disposition에 설정
-                filename = escape_uri_path(f"{chat_room.room_name}_cyberbullying_report.pdf")
+                        filename = escape_uri_path(f"{chat_room.room_name}_cyberbullying_report.pdf")
+                        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+                        response["Content-Disposition"] = f"attachment; filename*=UTF-8''{filename}"
+                        return response
 
-                # PDF 응답
-                response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
-                response["Content-Disposition"] = f"attachment; filename*=UTF-8''{filename}"
-                response["Cache-Control"] = "no-store, no-cache, must-revalidate"
-                response["Pragma"] = "no-cache"
-                response["Expires"] = "0"
-                return response
+                    except Exception as e:
+                        logger.error(f"PDF 생성 또는 파일 처리 실패 - 오류: {str(e)}")
+                        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-            except Exception as e:
-                logger.error(f"PDF 생성 또는 파일 처리 실패 - 오류: {str(e)}")
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            logger.error(f"Validation errors: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+      
+
 
 
 

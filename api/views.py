@@ -55,6 +55,14 @@ class FileUploadView(APIView):
                 chat_room = serializer.save()
                 chat_room.analyze_cyberbullying()  # 사이버불링 분석 및 저장
 
+                # 사이버불링 여부 확인
+                if not chat_room.is_cyberbullying:
+                    logger.info(f"ChatRoom {chat_room.pk} - 사이버불링 아님. PDF 생성 중단")
+                    return Response(
+                        {"error": "This chat room is not flagged for cyberbullying. PDF creation is not allowed."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
                 # PDF 생성
                 buffer = io.BytesIO()
                 pdf = canvas.Canvas(buffer, pagesize=A4)

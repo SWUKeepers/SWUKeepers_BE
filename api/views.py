@@ -46,14 +46,18 @@ class FileUploadView(APIView):
         if "file" not in request.FILES:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
+        logger.debug("파일 업로드 시리얼라이저 생성 시작")
         serializer = ChatRoomSerializer(data=request.data, context={"request": request})
 
         if serializer.is_valid():
-                
+            try:
+                logger.debug("시리얼라이저 저장 시작")
                 chat_room = serializer.save()
-                chat_room.analyze_cyberbullying()  # 사이버불링 분석 및 저장
 
-                # 사이버불링 여부 확인
+                logger.debug("사이버불링 분석 시작")
+                chat_room.analyze_cyberbullying()
+
+                # 사이버불링 여부 확인 후 PDF 생성
                 if not chat_room.is_cyberbullying:
                     logger.info(f"ChatRoom ID: {chat_room.pk} - 사이버불링 없음, PDF 생성하지 않음")
                     return Response(
@@ -61,51 +65,59 @@ class FileUploadView(APIView):
                         status=status.HTTP_200_OK,
                     )
 
-                else:
-    # 사이버불링일 경우에만 PDF 생성
+                logger.debug("PDF 생성 시작 - 사이버불링 탐지됨")
+                # PDF 생성
+                buffer = io.BytesIO()
+                pdf = canvas.Canvas(buffer, pagesize=A4)
+
+                # NanumGothic 폰트 설정
+                try:
+                    pdf.setFont("NanumGothic", 12)
+                    logger.debug("PDF 폰트 설정 성공")
+                except Exception as e:
+                    logger.error(f"PDF 글꼴 설정 실패 - 오류: {str(e)}")
+                    raise e
+
+                pdf.drawString(100, 800, "Cyberbullying Report")
+                pdf.drawString(100, 780, f"Room Name: {chat_room.room_name}")
+                pdf.drawString(100, 760, f"Saved At: {chat_room.saved_at.strftime('%Y-%m-%d %H:%M:%S')}")
+                y = draw_wrapped_text(pdf, 100, 740, f"Room Hash: {chat_room.room_hash}", max_width=400)
+
+                pdf.drawString(100, y - 20, "Messages:")
+                y -= 40
+
+                for message in chat_room.messages.all():
                     try:
-                        buffer = io.BytesIO()
-                        pdf = canvas.Canvas(buffer, pagesize=A4)
-
-                        pdf.drawString(100, 800, "Cyberbullying Report")
-                        pdf.drawString(100, 780, f"Room Name: {chat_room.room_name}")
-                        pdf.drawString(100, 760, f"Saved At: {chat_room.saved_at.strftime('%Y-%m-%d %H:%M:%S')}")
-                        y = draw_wrapped_text(pdf, 100, 740, f"Room Hash: {chat_room.room_hash}", max_width=400)
-
-                        pdf.drawString(100, y - 20, "Messages:")
-                        y -= 40
-                        for message in chat_room.messages.all():
-                            message_text = f"- {message.sender}: {message.content[:50]}{'...' if len(message.content) > 50 else ''}"
-                            y = draw_wrapped_text(pdf, 100, y, message_text, max_width=400)
-                            if y < 50:
-                                pdf.showPage()
-                                pdf.setFont("NanumGothic", 12)
-                                y = 800
-
-                        pdf.save()
-                        buffer.seek(0)
-
-                        logger.info(f"PDF 생성 성공 - ChatRoom ID: {chat_room.pk}, Hash: {chat_room.room_hash}")
-
-                        filename = escape_uri_path(f"{chat_room.room_name}_cyberbullying_report.pdf")
-                        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
-                        response["Content-Disposition"] = f"attachment; filename*=UTF-8''{filename}"
-                        return response
-
+                        message_text = f"- {message.sender}: {message.content[:50]}{'...' if len(message.content) > 50 else ''}"
+                        y = draw_wrapped_text(pdf, 100, y, message_text, max_width=400)
+                        if y < 50:
+                            pdf.showPage()
+                            pdf.setFont("NanumGothic", 12)
+                            y = 800
                     except Exception as e:
-                        logger.error(f"PDF 생성 또는 파일 처리 실패 - 오류: {str(e)}")
-                        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                        logger.error(f"메시지 처리 중 오류 발생 - 메시지: {message.content}, 오류: {str(e)}")
+                        continue
 
-      
+                pdf.save()
+                buffer.seek(0)
 
+                logger.info(f"PDF 생성 성공 - ChatRoom ID: {chat_room.pk}, Hash: {chat_room.room_hash}")
 
+                filename = escape_uri_path(f"{chat_room.room_name}_cyberbullying_report.pdf")
+                response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+                response["Content-Disposition"] = f"attachment; filename*=UTF-8''{filename}"
+                return response
+
+            except Exception as e:
+                logger.error(f"PDF 생성 또는 파일 처리 실패 - 오류: {str(e)}")
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            logger.error(f"Validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DownloadCyberbullyingPDF(APIView):
     def get(self, request, pk, *args, **kwargs):
-        """
-        사이버불링 PDF 다운로드를 처리하는 API 뷰.
-        """
         try:
             chat_room = ChatRoom.objects.get(pk=pk)
             if not chat_room.is_cyberbullying:
@@ -115,19 +127,11 @@ class DownloadCyberbullyingPDF(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
             logger.info(f"ChatRoom 조회 성공 - ID: {pk}, Room Name: {chat_room.room_name}")
-        except ChatRoom.DoesNotExist:
-            logger.error(f"ChatRoom 조회 실패 - ID: {pk}")
-            return Response(
-                {"error": "Chat room not found or not marked as cyberbullying."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
 
-        try:
             # PDF 생성
             buffer = io.BytesIO()
             pdf = canvas.Canvas(buffer, pagesize=A4)
 
-            # NanumGothic 폰트 설정
             try:
                 pdf.setFont("NanumGothic", 12)
             except Exception as e:
@@ -154,17 +158,17 @@ class DownloadCyberbullyingPDF(APIView):
 
             logger.info(f"PDF 생성 성공 - ChatRoom ID: {pk}")
 
-            # 파일 이름을 UTF-8로 인코딩하여 Content-Disposition에 설정
             filename = escape_uri_path(f"{chat_room.room_name}_cyberbullying_report.pdf")
-
-            # PDF 반환
             response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
             response["Content-Disposition"] = f"attachment; filename*=UTF-8''{filename}"
-            response["Cache-Control"] = "no-store, no-cache, must-revalidate"
-            response["Pragma"] = "no-cache"
-            response["Expires"] = "0"
             return response
 
+        except ChatRoom.DoesNotExist:
+            logger.error(f"ChatRoom 조회 실패 - ID: {pk}")
+            return Response(
+                {"error": "Chat room not found or not marked as cyberbullying."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         except Exception as e:
             logger.error(f"PDF 생성 또는 응답 실패 - ID: {pk}, 오류: {str(e)}")
             return Response(

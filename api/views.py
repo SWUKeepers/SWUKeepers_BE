@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # 한글 폰트 등록
-font_path = "/home/doa/PPBL/static/fonts/NanumGothic-Regular.ttf"
+font_path = "/home/minji/SWUKeepers_BE/static/fonts/NanumGothic-Regular.ttf"
 try:
     pdfmetrics.registerFont(TTFont("NanumGothic", font_path))
     logger.info("NanumGothic 폰트 등록 성공")
@@ -41,6 +41,7 @@ def draw_wrapped_text(pdf, x, y, text, max_width, font_name="NanumGothic", font_
         logger.error(f"draw_wrapped_text 오류: {str(e)}")
         raise e
 
+
 class FileUploadView(APIView):
     def post(self, request, *args, **kwargs):
         if "file" not in request.FILES:
@@ -53,22 +54,16 @@ class FileUploadView(APIView):
             try:
                 chat_room = serializer.save()
                 chat_room.analyze_cyberbullying()  # 사이버불링 분석 및 저장
-                chat_room.refresh_from_db()  # DB에서 다시 읽어서 최신 상태로 갱신
 
+                # 사이버불링 여부 확인
                 if not chat_room.is_cyberbullying:
-                    logger.info(f"PDF 생성 생략됨 - ChatRoom ID: {chat_room.pk} (사이버불링 없음)")
+                    logger.info(f"ChatRoom {chat_room.pk} - 사이버불링 아님. PDF 생성 중단")
                     return Response(
-                        {"message": "No cyberbullying detected."},
-                        status=status.HTTP_200_OK,
+                        {"error": "This chat room is not flagged for cyberbullying. PDF creation is not allowed."},
+                        status=status.HTTP_403_FORBIDDEN,
                     )
-                else:
-                    logger.info(f"사이버불링 감지됨 - ChatRoom ID: {chat_room.pk}, PDF 생성 시작")
-                
-                # PDF 생성 시작 로그 추가
-                logger.debug(f"PDF 생성 시도 중 - ChatRoom ID: {chat_room.pk}")
 
-
-                # 사이버불링이 있는 경우에만 PDF 생성
+                # PDF 생성
                 buffer = io.BytesIO()
                 pdf = canvas.Canvas(buffer, pagesize=A4)
 
@@ -97,13 +92,6 @@ class FileUploadView(APIView):
                 pdf.save()
                 buffer.seek(0)
 
-                # 버퍼가 제대로 생성되었는지 확인
-                pdf_size = len(buffer.getvalue())
-                logger.info(f"PDF 생성 완료 - 파일 크기: {pdf_size} bytes (ChatRoom ID: {chat_room.pk})")
-
-                if pdf_size == 0:
-                    return Response({"error": "Generated PDF is empty"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
                 logger.info(f"PDF 생성 및 전송 성공 - ChatRoom ID: {chat_room.pk}, Hash: {chat_room.room_hash}")
 
                 # 파일 이름을 UTF-8로 인코딩하여 Content-Disposition에 설정
@@ -124,8 +112,12 @@ class FileUploadView(APIView):
             logger.error(f"Validation errors: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class DownloadCyberbullyingPDF(APIView):
     def get(self, request, pk, *args, **kwargs):
+        """
+        사이버불링 PDF 다운로드를 처리하는 API 뷰.
+        """
         try:
             chat_room = ChatRoom.objects.get(pk=pk)
             if not chat_room.is_cyberbullying:
@@ -135,11 +127,19 @@ class DownloadCyberbullyingPDF(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
             logger.info(f"ChatRoom 조회 성공 - ID: {pk}, Room Name: {chat_room.room_name}")
+        except ChatRoom.DoesNotExist:
+            logger.error(f"ChatRoom 조회 실패 - ID: {pk}")
+            return Response(
+                {"error": "Chat room not found or not marked as cyberbullying."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
+        try:
             # PDF 생성
             buffer = io.BytesIO()
             pdf = canvas.Canvas(buffer, pagesize=A4)
 
+            # NanumGothic 폰트 설정
             try:
                 pdf.setFont("NanumGothic", 12)
             except Exception as e:
@@ -166,17 +166,17 @@ class DownloadCyberbullyingPDF(APIView):
 
             logger.info(f"PDF 생성 성공 - ChatRoom ID: {pk}")
 
+            # 파일 이름을 UTF-8로 인코딩하여 Content-Disposition에 설정
             filename = escape_uri_path(f"{chat_room.room_name}_cyberbullying_report.pdf")
+
+            # PDF 반환
             response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
             response["Content-Disposition"] = f"attachment; filename*=UTF-8''{filename}"
+            response["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            response["Pragma"] = "no-cache"
+            response["Expires"] = "0"
             return response
 
-        except ChatRoom.DoesNotExist:
-            logger.error(f"ChatRoom 조회 실패 - ID: {pk}")
-            return Response(
-                {"error": "Chat room not found or not marked as cyberbullying."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
         except Exception as e:
             logger.error(f"PDF 생성 또는 응답 실패 - ID: {pk}, 오류: {str(e)}")
             return Response(

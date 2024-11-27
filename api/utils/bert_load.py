@@ -23,7 +23,7 @@ def load_model_and_tokenizer():
 
 # 욕설 단어 로드 함수
 def load_abuse_words():
-    curse_file_path = os.path.join(settings.BASE_DIR, '/home/minji/SWUKeepers_BE/curse.json')  # 욕설 단어 JSON 파일 경로
+    curse_file_path = os.path.join(settings.BASE_DIR, '/home/doa/PPBL/curse.json')  # 욕설 단어 JSON 파일 경로
     try:
         with open(curse_file_path, 'r', encoding='utf-8') as f:
             curse_words = json.load(f)

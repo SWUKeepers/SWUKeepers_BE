@@ -109,7 +109,6 @@ def predict_with_cyberbullying_check(sentences, tokenizer, model, device):
         if contains_abuse or contains_laughing:
             consecutive_abuse_count += 1
             if consecutive_abuse_count >= 2:
-            if consecutive_abuse_count >= 2:
                 sentiment = "긍정"
                 print(f"[INFO] 연속 욕설/웃음 기호 감지 -> 강제 긍정 처리: {sentence}")
             elif consecutive_abuse_count == 1:

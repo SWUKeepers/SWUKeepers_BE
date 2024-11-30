@@ -44,7 +44,14 @@ class ChatRoomAdmin(admin.ModelAdmin):
         사이버불링 여부를 표시합니다.
         """
         print(f"[DEBUG] ChatRoom {obj.pk} - is_cyberbullying: {obj.is_cyberbullying}")
-        return "Yes" if obj.is_cyberbullying else "No"
+        
+        
+        if obj.is_cyberbullying:
+            # Yes인 경우 빨간색 볼드체
+            return format_html('<span style="color: red; font-weight: bold;">Yes</span>')
+        else:
+            # No인 경우 회색 
+            return format_html('<span style="color: gray;">No</span>')
 
     cyberbullying_status.short_description = "사이버불링 여부"
 

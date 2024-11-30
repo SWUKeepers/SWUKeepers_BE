@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # 한글 폰트 등록
-font_path = "/home/minji/SWUKeepers_BE/static/fonts/NanumGothic-Regular.ttf"
+font_path = "/home/doa/PPBL/static/fonts/NanumGothic-Regular.ttf"
 try:
     pdfmetrics.registerFont(TTFont("NanumGothic", font_path))
     logger.info("NanumGothic 폰트 등록 성공")
